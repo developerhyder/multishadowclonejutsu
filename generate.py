@@ -16,6 +16,31 @@ Enter the noice that you want
 4. let god be a witness to my sins
 
 '''))
+
+def calculate_avg_speed(avg_speed, newAvg_Speed):
+    #this method called when we need to find avg of past 5 hours of speed data
+    for item in avg_speed:
+        summ = 0.0
+        if avg_speed.index(item)<5:
+            for i in range(avg_speed.index(item)):
+                summ += avg_speed[i]
+
+            if avg_speed.index(item) == 0:
+
+                newAvg_Speed.append(item)
+            else:
+                newSum = summ/avg_speed.index(item)
+
+                newAvg_Speed.append(newSum)
+        else:
+            for i in range(avg_speed.index(item)-5, avg_speed.index(item)):
+                summ += avg_speed[i]
+
+            newSum = summ/5
+
+            newAvg_Speed.append(newSum)
+    return newAvg_Speed
+
 def signs():
     return random.choice([-1, 1])
 def speedSelect():
@@ -29,6 +54,13 @@ def newTimestamp(date1):
     date2 = date1[:-7]+str(random.randint(10,100))
     return date2+date1[-5:]
 
+def normalise(d1, d2):
+    if d1==-1:
+
+        return np.nan
+    else:
+
+        return d1/d2
 def randomVal(choice, choice2 ):
     selectChoice = random.choice([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
     if choice == 1:
@@ -154,7 +186,7 @@ else:
 
 os.mkdir(path="../generated_csvs/"+name_of_folder)
 for index in range(numOfCsv):
-    newDf = pd.DataFrame(df, columns=['Timestamp', 'Latitude', 'Longitude','Size_A', 'Size_B', 'Size_C', 'Size_D', 'Width', 'Length', 'SOG', 'COG', 'ROT', 'ETA-Hours', 'ata-hour'])
+    newDf = pd.DataFrame(df, columns=['Timestamp', 'Latitude', 'Longitude','Size_A', 'Size_B', 'Size_C', 'Size_D', 'Width', 'Length', 'SOG', 'COG', 'ROT', 'ETA-Hours', 'ata-hour', 'distance_travelled'])
     choice = random.choice([1,2,3,4])
     '''
     1-> high priority is give to + lat,+ lon
@@ -173,18 +205,31 @@ for index in range(numOfCsv):
     2-> lon
     '''
 
+    newDf['Timestamp'] = newDf['Timestamp'].apply(lambda row: newTimestamp(row))
+
     newDf['Latitude'] = newDf['Latitude'].apply(lambda row: float(row) + randomVal(choice, 1)*(random.uniform(noice_data[0], noice_data[1])))
     newDf['Longitude'] = newDf['Longitude'].apply(lambda row: float(row) + randomVal(choice, 2)*(random.uniform(noice_data[0], noice_data[1])))
+
     newDf['SOG'] = newDf['SOG'].apply(lambda row: row + signs()*speedSelect())
 
     newETA = (df['ETA-Hours'][0]*newDf['SOG'].mean())/df['SOG'].mean()
     newDf['ETA-Hours']= newETA
 
+    avg_speed = list(newDf['SOG'])
+    newAvg_Speed = []
+    #avg_sog is the average of speed from past 5 hours
+    newDf['avg_sog']=calculate_avg_speed(avg_speed, newAvg_Speed)
+
+    newDf['COG'] = newDf['COG'].apply(lambda row: row + signs()*speedSelect())
+
+    maximo = newDf['distance_travelled'].max()
+    newDf['journey_completed'] = newDf['distance_travelled'].apply(lambda row: round(normalise(row, maximo)*100, 2))
+    newDf['journey_completed']
+
+    #ata must always be in the last
     newAta = (df['ata-hour'][0]*newDf['SOG'].mean())/df['SOG'].mean()
     newDf['ata-hour'] = newAta
-    newDf['COG'] = newDf['COG'].apply(lambda row: row + signs()*speedSelect())
-    newDf['Timestamp'] = newDf['Timestamp'].apply(lambda row: newTimestamp(row))
+
     path = "../generated_csvs/"+name_of_folder+"/"+str(index)+".csv"
     newDf.to_csv(path)
-
 print("it is done!!!")
